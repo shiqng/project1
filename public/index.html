@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no">
+    <link rel="icon" href="<%= BASE_URL %>favicon.ico">
+    <title><%= htmlWebpackPlugin.options.title %></title>
+  </head>
+  <body>
+    <noscript>
+      <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+    </noscript>
+
+    <div id="app"></div>
+    <style>
+      :root {
+        --button-width: 635px;
+        --button-height: 228px;
+        --toggle-diameter: 208px;
+        --button-toggle-offset: calc((var(--button-height) - var(--toggle-diameter)) / 2);
+        --toggle-shadow-offset: 10px;
+        --toggle-wider: 333px;
+        --color-grey: rgb(142, 148, 153);
+        --color-dark-grey: #39393D;
+        --color-green: #30D158;
+    }
+    </style>
+  </body>
+  <script>
+    document.body.addEventListener('touchmove', function (event) {
+      event.preventDefault();
+
+    }, { passive: false });
+
+    // 禁用双指手势操作
+    document.addEventListener("gesturestart", function (event) {
+      event.preventDefault();
+    });
+  </script>
+
+</html>

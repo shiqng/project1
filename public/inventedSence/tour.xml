@@ -1,0 +1,472 @@
+﻿<krpano version="1.20.9" title="Virtual Tour">
+
+	<include url="skin/vtourskin.xml" />
+
+	<!-- customize skin settings: maps, gyro, webvr, thumbnails, tooltips, layout, design, ... -->
+	<skin_settings maps="false"
+	               maps_type="google"
+	               maps_bing_api_key=""
+	               maps_google_api_key=""
+	               maps_zoombuttons="false"
+	               maps_loadonfirstuse="true"
+	               gyro="true"
+	               gyro_keeplookingdirection="false"
+	               webvr="true"
+	               webvr_keeplookingdirection="true"
+	               webvr_prev_next_hotspots="true"
+	               autotour="false"
+	               littleplanetintro="false"
+	               followmousecontrol="false"
+	               title="true"
+	               thumbs="true"
+	               thumbs_width="120" thumbs_height="80" thumbs_padding="10" thumbs_crop="0|40|240|160"
+	               thumbs_opened="false"
+	               thumbs_text="false"
+	               thumbs_dragging="true"
+	               thumbs_onhoverscrolling="false"
+	               thumbs_scrollbuttons="false"
+	               thumbs_scrollindicator="false"
+	               thumbs_loop="false"
+	               tooltips_buttons="false"
+	               tooltips_thumbs="false"
+	               tooltips_hotspots="false"
+	               tooltips_mapspots="false"
+	               deeplinking="false"
+	               loadscene_flags="MERGE"
+	               loadscene_blend="OPENBLEND(0.5, 0.0, 0.75, 0.05, linear)"
+	               loadscene_blend_prev="SLIDEBLEND(0.5, 180, 0.75, linear)"
+	               loadscene_blend_next="SLIDEBLEND(0.5,   0, 0.75, linear)"
+	               loadingtext=""
+	               layout_width="100%"
+	               layout_maxwidth="814"
+	               controlbar_width="-24"
+	               controlbar_height="40"
+	               controlbar_offset="20"
+	               controlbar_offset_closed="-40"
+	               controlbar_overlap.no-fractionalscaling="10"
+	               controlbar_overlap.fractionalscaling="0"
+	               design_skin_images="vtourskin.png"
+	               design_bgcolor="0x2D3E50"
+	               design_bgalpha="0.8"
+	               design_bgborder="0"
+	               design_bgroundedge="1"
+	               design_bgshadow="0 4 10 0x000000 0.3"
+	               design_thumbborder_bgborder="3 0xFFFFFF 1.0"
+	               design_thumbborder_padding="2"
+	               design_thumbborder_bgroundedge="0"
+	               design_text_css="color:#FFFFFF; font-family:Arial;"
+	               design_text_shadow="1"
+	               />
+	<action name="littleplanet" autorun="onstart" >
+		if(scene[0].firsttime,
+			set(layer[skin_scroll_window].visible,false);
+			set(layer[skin_scroll_window].alpha,0);
+			set(layer[skin_control_bar].visible,false);
+			set(layer[skin_scroll_window].alpha,0);
+			set_hotspot_visible(false);
+			littleplanetview();
+			set(scene[0].firsttime,false));
+	</action>
+
+	<action name="littleplanetview">
+		set(view.stereographic,true);
+		set(view.fisheye,1.0); 
+		set(view.fov,155); 
+		set(view.fovtype,VFOV); 
+		set(view.fovmax,150); 
+		set(view.hlookat,-60); 
+		set(view.vlookat,77); 
+	</action>
+	<action name="set_hotspot_visible">
+		for(set(i,0),i LT hotspot.count,inc(i),
+			set(hotspot[get(i)].visible,%1);
+		);
+	</action>
+
+	<!-- 新场景加载完成时执行 -->
+	<events onenterfullscreen=""
+		onnewscene="ttt"
+	/>
+	<action name="ttt">
+		if(
+			get(scene[get(xml.scene)].name) == 'scene_dt',js(nowSence('dtBtnShow'));
+			,
+			js(nowSence('other'));
+		);
+		js(nowSence('senceChangeSuccess'));
+	</action>
+
+	<action name="test" scope="global" >
+		def(a,number,1);
+		def(b,number,1);
+		def(c,number,1);
+		def(d,number,1);
+	</action>
+
+    <!-- 小行星持续2秒后切换至正常视场-->  
+  <events onloadcomplete="if(view.fisheye == 1,delayedcall(lp_1,2.0, normalview()));" 
+          onremovepano="ifnot(view.fisheye == 0,stopdelayedcall(lp_1));" 
+          name="littleplanet"  
+          keep="false" />  
+  
+  <action name="normalview">  
+        tween(view.hlookat, -40, 2.5, easeInOutQuad);  
+        tween(view.vlookat, 0, 2.5, easeInOutQuad);  
+        tween(view.fov,     85,  2.5, easeInOutQuad);  
+        tween(view.fisheye, 0.0, 2.5, easeInOutQuad);  
+        wait(2.7);  
+        
+        set_hotspot_visible(true);
+        set(layer[skin_scroll_window].visible,true);tween(layer[skin_scroll_window].alpha,1,1);
+        set(layer[skin_control_bar].visible,true);tween(layer[skin_control_bar].alpha,1,1);
+  </action>  
+	
+	<!-- 序列帧控件 -->
+	<action name="do_crop_animation" scope="local" args="framewidth, frameheight, framerate">
+		<!-- 定义局部变量 -->
+		calc(local.xframes, (caller.imagewidth /framewidth) BOR 0);
+		calc(local.frames, xframes * ((caller.imageheight / frameheight) BOR 0));
+		def(local.frame, integer, 0);
+		
+		<!-- 设置第一帧 -->
+		calc(caller.crop, '0|0|' + framewidth + '|' + frameheight);
+		
+		<!-- 动画部分 -->
+		setinterval(calc('crop_anim_' + caller.name), calc(1.3 / framerate),
+			if(caller.loaded,
+				inc(frame);
+				if(frame GE frames, if(caller.onlastframe !== null, callwith(caller, onlastframe() ) ); set(frame,0); );
+				mod(xpos, frame, xframes);
+				div(ypos, frame, xframes);
+				Math.floor(ypos);
+				mul(xpos, framewidth);
+				mul(ypos, frameheight);
+				calc(caller.crop, xpos + '|' + ypos + '|' + framewidth + '|' + frameheight);
+			  ,
+				<!-- 当热点移除时停止动画 -->
+				clearinterval(calc('crop_anim_' + caller.name));
+			);
+		);
+	</action>
+
+	<!-- 不一样的过渡效果 过渡代码-->
+	<!-- <blendmodes name="no blending" description="无过渡效果" blend="NOBLEND" />
+	<blendmodes name="simple crossblending" description="简单淡入淡出" blend="BLEND(1.0, easeInCubic)" /> -->
+	<blendmodes name="zoom blend" description="缩放过渡" blend="ZOOMBLEND(1.5, 5.0, easeinquad)" />
+	<!-- <blendmodes name="black-out" description="黑场过渡" blend="COLORBLEND(2.0, 0x000000, easeOutSine)" /> -->
+	<!-- <blendmodes name="white-flash" description="白场过渡" blend="LIGHTBLEND(1.0, 0xFFFFFF, 2.0, linear)" />
+	<blendmodes name="right-to-left" description="从右至左" blend="SLIDEBLEND(1.0, 0.0, 0.2, linear)" />
+	<blendmodes name="top-to-bottom" description="从上至下" blend="SLIDEBLEND(1.0, 90.0, 0.01, linear)" />
+	<blendmodes name="diagonal" description="对角线" blend="SLIDEBLEND(1.0, 135.0, 0.4, linear)" />
+	<blendmodes name="circle open" description="圆形展开" blend="OPENBLEND(1.0, 0.0, 0.2, 0.0, linear)" />
+	<blendmodes name="vertical open" description="垂直展开" blend="OPENBLEND(0.7, 1.0, 0.1, 0.0, linear)" />
+	<blendmodes name="horizontal open" description="水平展开" blend="OPENBLEND(1.0, -1.0, 0.3, 0.0, linear)" /> -->
+	<!-- <blendmodes name="elliptic + zoom" description="椭圆缩放" blend="OPENBLEND(1.0, -0.5, 0.3, 2.8, linear)" /> -->
+	<!-- 跳转场景方法 -->
+	<action name="jump" scope="local" args="var1">
+		<!-- trace(get(scene[get(xml.scene)].name)); -->
+		if(
+			get(scene[get(xml.scene)].name) == 'scene_dt', lookto(270,0,145,linear(90));loadscene(get(var1), null, MERGE, get(blendmodes[zoom blend].blend));,
+			get(scene[get(xml.scene)].name) == 'scene_khxyzx', lookto(50,0,140,linear(90));loadscene(get(var1), null, MERGE, get(blendmodes[zoom blend].blend));,
+			get(scene[get(xml.scene)].name) == 'scene_jjzzzx', lookto(20,0,140,linear(90));loadscene(get(var1), null, MERGE, get(blendmodes[zoom blend].blend));,
+			get(scene[get(xml.scene)].name) == 'scene_csyzzx', lookto(121.5,11,125,linear(90));loadscene(get(var1), null, MERGE, get(blendmodes[zoom blend].blend));,
+			get(scene[get(xml.scene)].name) == 'scene_csyzzx1', lookto(240,20,135,linear(90));loadscene(get(var1), null, MERGE, get(blendmodes[zoom blend].blend));,
+			get(scene[get(xml.scene)].name) == 'scene_khjlzx', lookto(160,0,85,linear(90));loadscene(get(var1), null, MERGE, get(blendmodes[zoom blend].blend));,
+		),
+		<!-- if(
+			get(var1) == 'scene_dt', loadscene(get(var1), null, MERGE, get(blendmodes[zoom blend].blend));,
+			get(var1) == 'scene_khxyzx', loadscene(get(var1), null, MERGE, get(blendmodes[zoom blend].blend));,
+			get(var1) == 'scene_jjzzzx', loadscene(get(var1), null, MERGE, get(blendmodes[zoom blend].blend));,
+			get(var1) == 'scene_csyzzx', loadscene(get(var1), null, MERGE, get(blendmodes[zoom blend].blend));,
+			get(var1) == 'scene_csyzzx1', loadscene(get(var1), null, MERGE, get(blendmodes[zoom blend].blend));,
+			get(var1) == 'scene_khjlzx', loadscene(get(var1), null, MERGE, get(blendmodes[zoom blend].blend));,
+
+		) -->
+		<!-- loadscene(get(var1), null, MERGE, get(blendmodes[zoom blend].blend)); -->
+	</action>
+	<action name="jump1" scope="local" args="var1">
+		<!-- trace(get(var1)); -->
+		loadscene(get(var1), null, MERGE);
+	</action>
+
+	<!-- 序列帧控件 -->
+	<action name="do_crop_animation" scope="local" args="framewidth, frameheight, framerate">
+		<!-- 定义局部变量 -->
+		calc(local.xframes, (caller.imagewidth /framewidth) BOR 0);
+		calc(local.frames, xframes * ((caller.imageheight / frameheight) BOR 0));
+		def(local.frame, integer, 0);
+		
+		<!-- 设置第一帧 -->
+		calc(caller.crop, '0|0|' + framewidth + '|' + frameheight);
+		
+		<!-- 动画部分 -->
+		setinterval(calc('crop_anim_' + caller.name), calc(1.3 / framerate),
+			if(caller.loaded,
+				inc(frame);
+				if(frame GE frames, if(caller.onlastframe !== null, callwith(caller, onlastframe() ) ); set(frame,0); );
+				mod(xpos, frame, xframes);
+				div(ypos, frame, xframes);
+				Math.floor(ypos);
+				mul(xpos, framewidth);
+				mul(ypos, frameheight);
+				calc(caller.crop, xpos + '|' + ypos + '|' + framewidth + '|' + frameheight);
+			  ,
+				<!-- 当热点移除时停止动画 -->
+				clearinterval(calc('crop_anim_' + caller.name));
+			);
+		);
+	</action>
+
+	<!--
+	    For an alternative skin design either change the <skin_settings> values 
+	    from above or optionally include one of the predefined designs from below.
+	-->
+	<!-- <include url="skin/vtourskin_design_flat_light.xml"  /> -->
+	<!-- <include url="skin/vtourskin_design_glass.xml"       /> -->
+	<!-- <include url="skin/vtourskin_design_ultra_light.xml" /> -->
+	<!-- <include url="skin/vtourskin_design_117.xml"         /> -->
+	<!-- <include url="skin/vtourskin_design_117round.xml"    /> -->
+	<!-- <include url="skin/vtourskin_design_black.xml"       /> -->
+
+
+	<!-- startup action - load the first scene -->
+	<action name="startup" autorun="onstart">
+		if(startscene === null OR !scene[get(startscene)], copy(startscene,scene[0].name); );
+		loadscene(get(startscene), null, MERGE);
+		if(startactions !== null, startactions() );
+		test();
+	</action>
+
+	<!-- 大堂 -->
+	<scene name="scene_dt" title="dt" lat="" lng="" heading="">
+		
+		<control bouncinglimits="calc:image.cube ? true : false" />
+
+		<view hlookat="146" vlookat="-2.0" hlookatmax="50" hlookatmin="340" vlookatmax="66" vlookatmin="-90" fovtype="MFOV" fov="145" maxpixelzoom="2.0" fovmin="70" fovmax="145" limitview="range" />
+
+		<preview url="panos/dt.tiles/preview.jpg" />
+
+		<image>
+			<cube url="panos/dt.tiles/pano_%s.jpg" />
+		</image>
+		<!-- 大堂顶部标题 -->
+		<layer name="item1" url="../images/dt/top.png"  width="1920" height="110" align="left" x="263" y="-500" scale="0.75" handcursor="false"/>
+		<!-- 大堂屏幕 -->
+		<hotspot name="scene_p" ath="160" atv="-14.4" rx="-14" ry="27" rz="1.0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.44" url="../images/dt/p.png" width="1644" height="449" edge="center" visible="true" enabled="true" onclick="js(nowSence('DtImage'));" onhover.addevent="tween(scale,calc(0.46));" onout.addevent="tween(scale,0.44);"/>
+		<!-- 动态热点 -->
+		<hotspot name="scene_p_btn" ath="188" atv="-14.6" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.65" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('DtImage'));"/>
+		<!-- 客户logo -->
+		<!-- 修改前 -->
+		<!-- <hotspot name="logo"  ath="95.5" atv="-8.5" rx="0" ry="-8" rz="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.5" visible="true" url="../images/logo.png" devices="desktop" width="174.4" height="172.6" edge="center" enabled="false"/>
+		<hotspot name="logo1"  ath="154" atv="36.2" rx="30" ry="-11.2" rz="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.32" visible="false" url="../images/khLogo.png" devices="desktop" width="383" height="383" edge="center" enabled="false"/> -->
+		<!-- 柜台位置 -->
+		<hotspot name="logo"  ath="174" atv="33.2" rx="30" ry="-31.2" rz="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.3" visible="true" url="../images/logo.png" devices="desktop" width="174.4" height="172.6" edge="center" enabled="false"/>
+		<hotspot name="logo1"  ath="134" atv="36.20" rx="30" ry="17" rz="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.23" visible="false" url="../images/KhLogo.png" devices="desktop" width="383" height="383" edge="center" enabled="false"/>
+		<!-- 文字位置 -->
+		<!-- <hotspot name="logo"  ath="166" atv="-42.4" rx="30" ry="20.2" rz="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.5" visible="true" url="../images/logo.png" devices="desktop" width="174.4" height="172.6" edge="center" enabled="false"/>
+		<hotspot name="logo1"  ath="130" atv="-43.0" rx="20" ry="-20.5" rz="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.32" visible="true" url="../images/khLogo.png" devices="desktop" width="383" height="383" edge="center" enabled="false"/> -->
+		<!-- 维护服务概览 -->
+		<hotspot name="whfwgl" ath="199.0" atv="-6.0" rx="0" ry="0" rz="0.2" style="skin_hotspotstyle" linkedscene="videopano" scale="0.3"  visible="false" url="../images/dt/btn.png" width="274" height="141" edge="center" enabled="true" onclick="js(nowSence('MessageBar'));"/>
+		<hotspot name="whfwgl_btn"  ath="194.0" atv="-6.5" rx="0" ry="0" rz="0.2" style="skin_hotspotstyle" linkedscene="videopano" scale="0.3" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="false" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('MessageBar'));"/>
+		<!-- 发展历程 -->
+		<hotspot name="fzlc" ath="96.0" atv="19.3" rx="20" ry="35.5" rz="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.5"  visible="true" url="../images/dt/develop.png" width="317" height="99" edge="center" enabled="true" onclick="js(nowSence('Development'));" onhover.addevent="tween(scale,calc(0.55));" onout.addevent="tween(scale,0.5);"/>
+		<!-- 动态热点 -->
+		<hotspot name="fzlc_btn" ath="88" atv="17.3" rx="20" ry="35.5" style="skin_hotspotstyle" linkedscene="videopano" scale="0.35" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('Development'));"/>
+		
+		<!-- 文字下边蓝色矩形底图 -->
+		<hotspot name="welcomeBtBgdt2" ath="-212.9062" atv="-35.200" scale="0.7" rx="-30" rz="0.5" style="skin_hotspotstyle" url="../images/welcomeBtBg.png" width="1055" height="73" edge="center"  visible="true" enabled="false"/>
+		<!-- 两箭头 -->
+		<hotspot name="welcomeArrowRightdt2"  ath="187.9" atv="-27.600" ry="35" rx="25" rz="5" scale="0.55" style="skin_hotspotstyle" url="../images/welcomeArrowRight.png" width="114" height="140" edge="center" enabled="false" visible="true" onloaded="welcomeArrowRight();"/>
+		<hotspot name="welcomeArrowLeftdt2"  ath="105.9" atv="-28.30" ry="-45" rx="25" rz="5" scale="0.55" style="skin_hotspotstyle"  url="../images/welcomeArrowLeft.png" width="114" height="140" edge="center" enabled="false" visible="true" onloaded="welcomeArrowLeft();"/>
+		<!-- 文字 -->
+		<hotspot name="welcomeTitledt2"  ath="-212.9062" atv="-35.200" rx="-30" type="text" rz="0.5" scale="1.1" html="[b]Welcome to the Global Technical Assistance Center[/b]" css="font-family:Arial; font-size:25px; color:#ffffff;" wordwrap="true" bgalpha="0.5" bg="false" bgcolor="#111111" oversampling="1.0" height="35" distorted="true" vcenter="true" enabled="false" renderer="webgl" bgroundedge="10"/>
+
+		<action name="welcomeArrowRight">
+			def(longest,number,calc(get(ath)*get(a)));
+			def(new,boolean,true);
+			tweentest1();
+		</action>
+
+		<action name="welcomeArrowLeft">
+			def(longest1,number,calc(get(ath)*get(b)));
+			def(new1,boolean,true);
+			tweentest2();
+		</action>
+
+		<action name="tweentest1">
+			if(new == true,
+					<!-- trace("11111"); -->
+					set(new,false);
+					tween(ath,get(longest),1,default,tweentest1())
+					,
+					<!-- trace('22222'); -->
+					set(new,true);
+					tween(ath,calc(get(longest)-0.3),1,default,tweentest1())
+				);
+		</action>
+		<action name="tweentest2">
+			if(new1 == true,
+					<!-- trace("33333"); -->
+					set(new1,false);
+					tween(ath,get(longest1),1,default,tweentest2())
+					,
+					<!-- trace('44444'); -->
+					set(new1,true);
+					tween(ath,calc(get(longest1)+0.3),1,default,tweentest2())
+				);
+		</action>
+	</scene>
+
+	<!-- 客户响应中心 -->
+	<scene name="scene_khxyzx" title="khxyzx" onstart="" lat="" lng="" heading="">
+		
+		<control bouncinglimits="calc:image.cube ? true : false" />
+
+		<view hlookat="-71.0" vlookat="0.0" hlookatmax="110" hlookatmin="-190" vlookatmax="66" vlookatmin="-90" fovtype="MFOV" fov="120" maxpixelzoom="2.0" fovmin="70" fovmax="140" limitview="range" />
+
+		<preview url="panos/khxyzx.tiles/preview.jpg" />
+
+		<image>
+			<cube url="panos/khxyzx.tiles/pano_%s.jpg" />
+		</image>
+		<!-- 快速响应顶部标题 -->
+		<layer name="item2" url="../images/khxyzx/top.png"  width="1920" height="110" align="left" x="263" y="-500" scale="0.75" handcursor="false"/>
+		<!-- btn1下的两个按钮 -->
+		<!-- <hotspot name="khxyzx_b2b" ath="12" atv="-7.4" rx="" ry="-18" rz="4" style="skin_hotspotstyle" linkedscene="videopano" scale="0.35" width="602" height="419" edge="center" visible="true" enabled="true" onclick="js(nowSence('KhxyzxVideoB2b'));"/>
+		<hotspot name="khxyzx_email" ath="35" atv="-7.4" rx="" ry="-18" rz="4" style="skin_hotspotstyle" linkedscene="videopano" scale="0.35" width="602" height="419" edge="center" visible="true" enabled="true" onclick="js(nowSence('KhxyzxVideoEmail'));"/> -->
+		<hotspot name="khxyzx_b2b" ath="-112" atv="-5.7" rx="-2" ry="-18" rz="1" style="skin_hotspotstyle" linkedscene="videopano" scale="0.50" url="../images/khxyzx/b2b.png" width="658" height="425" edge="center" visible="true" enabled="true" onclick="js(nowSence('KhxyzxVideoB2b'));" onhover.addevent="tween(scale,calc(0.52));" onout.addevent="tween(scale,0.50);"/>
+		<hotspot name="khxyzx_email" ath="-85" atv="-4.8" rx="0" ry="-39" rz="2" style="skin_hotspotstyle" linkedscene="videopano" scale="0.39" url="../images/khxyzx/email.png" width="658" height="405" edge="center" visible="true" enabled="true" onclick="js(nowSence('KhxyzxVideoEmail'));" onhover.addevent="tween(scale,calc(0.41));" onout.addevent="tween(scale,0.39);"/>
+		<!-- 动态热点 -->
+		<hotspot name="khxyzx_b2b_btn"  ath="-106.0" atv="-13.8" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.35" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('KhxyzxVideoB2b'));"/>
+		<!-- 动态热点 -->
+		<hotspot name="khxyzx_email_btn" ath="-80" atv="-10.8" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.35" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('KhxyzxVideoEmail'));"/>
+		<!-- 快速响应btn2 -->
+		<hotspot name="khxyzx_phone" ath="-50.8" atv="-4.3" rx="0" ry="5" rz="-1.5" style="skin_hotspotstyle" linkedscene="videopano" scale="0.41" url="../images/khxyzx/phone.png" width="683" height="411" edge="center" visible="true" enabled="true" onclick="js(nowSence('KhxyzxVideoPhone'));" onhover.addevent="tween(scale,calc(0.43));" onout.addevent="tween(scale,0.41);"/>
+		<hotspot name="khxyzx_web" ath="-22.5" atv="-4.5" rx="" ry="-25" rz="0.5" style="skin_hotspotstyle" linkedscene="videopano" scale="0.39" url="../images/khxyzx/web.png" width="653" height="411" edge="center" visible="true" enabled="true" onclick="js(nowSence('KhxyzxVideoWeb'));" onhover.addevent="tween(scale,calc(0.41));" onout.addevent="tween(scale,0.39);"/>
+		<!-- 动态热点 -->
+		<hotspot name="khxyzx_phone_btn" ath="-46.50" atv="-11.3" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.35" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('KhxyzxVideoPhone'));"/>
+		<!-- 动态热点 -->
+		<hotspot name="khxyzx_web_btn" ath="-19.50" atv="-10.8" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.2" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('KhxyzxVideoWeb'));"/>
+	</scene>
+
+	<!-- 紧急作战中心 -->
+	<scene name="scene_jjzzzx" title="jjzzzx" onstart="" lat="" lng="" heading="">
+		
+		<control bouncinglimits="calc:image.cube ? true : false" />
+
+		<view hlookat="150.0" vlookat="15.0" vlookatmax="66" vlookatmin="-90" fovtype="MFOV" fov="100" maxpixelzoom="2.0" fovmin="70" fovmax="140" limitview="range" />
+
+		<preview url="panos/jjzzzx.tiles/preview.jpg" />
+
+		<image>
+			<cube url="panos/jjzzzx.tiles/pano_%s.jpg" />
+		</image>
+		<!-- 紧急作战中心顶部标题 -->
+		<layer name="item3" url="../images/jjzzzx/top.png"  width="1920" height="110" align="left" x="263" y="-500" scale="0.75" handcursor="false"/>
+		<!-- 图一三个点击按钮 -->
+		<hotspot name="jjzzzx_dj1" ath="-243.3" atv="-3.4" rx="-2" ry="-55" rz="1" style="skin_hotspotstyle" url="../images/jjzzzx/btn1.png" linkedscene="videopano" scale="0.36" width="570" height="372" edge="center" visible="true" enabled="true" onclick="js(nowSence('JjzzzxVideoConvening'));" onhover.addevent="tween(scale,calc(0.375));" onout.addevent="tween(scale,0.36);"/>
+		
+		<hotspot name="jjzzzx_dj2" ath="-229.7" atv="-3" rx="0" ry="19" rz="0.2" style="skin_hotspotstyle" url="../images/jjzzzx/btn2.png" linkedscene="videopano" scale="0.32" width="570" height="372" edge="center" visible="true" enabled="true" onclick="js(nowSence('JjzzzxVideoOnline'));" onhover.addevent="tween(scale,calc(0.335));" onout.addevent="tween(scale,0.32);"/>
+		
+		<hotspot name="jjzzzx_dj3" ath="-192.7" atv="-2.0" rx="0" ry="-25" rz="2.5" style="skin_hotspotstyle" url="../images/jjzzzx/btn3.png" linkedscene="videopano" scale="0.305" width="573" height="377" edge="center" visible="true" enabled="true" onclick="js(nowSence('JjzzzxVideoProgress'));" onhover.addevent="tween(scale,calc(0.32));" onout.addevent="tween(scale,0.305);"/>
+		<!-- 动态热点 -->
+		<hotspot name="jjzzzx_dj1_btn" ath="-238.4" atv="-7.9" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.2" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('JjzzzxVideoConvening'));"/>
+		<hotspot name="jjzzzx_dj2_btn" ath="-221.5" atv="-8.1" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.25" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('JjzzzxVideoOnline'));"/>
+		<hotspot name="jjzzzx_dj3_btn" ath="-187.4" atv="-6.4" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.25" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('JjzzzxVideoProgress'));"/>
+		<!-- 图二二个点击按钮 -->
+		<hotspot name="jjzzzx_dj4" ath="-209.75" atv="-2.43" rx="0" ry="-5" rz="1.5" style="skin_hotspotstyle" url="../images/jjzzzx/btn4.png" linkedscene="videopano" scale="0.34" width="570" height="375" edge="center" visible="true" enabled="true" onclick="js(nowSence('JjzzzxVideoAnalysis'));" onhover.addevent="tween(scale,calc(0.35));" onout.addevent="tween(scale,0.335);"/>
+		<hotspot name="jjzzzx_dj5" ath="-177.3" atv="-1.5" rx="-3" ry="33" rz="2" style="skin_hotspotstyle" url="../images/jjzzzx/btn5.png" linkedscene="videopano" scale="0.315" width="595" height="400" edge="center" visible="true" enabled="true" onclick="js(nowSence('JjzzzxVideoReview'));" onhover.addevent="tween(scale,calc(0.33));" onout.addevent="tween(scale,0.315);"/>
+
+		<!-- 动态热点 -->
+		<hotspot name="jjzzzx_dj4_btn" ath="-204.4" atv="-7.6" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.25" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('JjzzzxVideoAnalysis'));"/>
+		<hotspot name="jjzzzx_dj5_btn" ath="-170.1" atv="-6.9" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.2" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('JjzzzxVideoReview'));"/>
+		
+		<!-- 紧急作战中心btn -->
+		<hotspot name="jjzzzx_Platform" ath="-215.5" atv="6.9" rx="10" ry="10" rz="-1.5" style="skin_hotspotstyle" linkedscene="videopano" scale="0.44" url="../images/jjzzzx/btn.png" width="338" height="86" edge="center" visible="true" enabled="true" onclick="js(nowSence('JjzzzxVideoPlatform'));" onhover.addevent="tween(scale,calc(0.5));" onout.addevent="tween(scale,0.44);"/>
+		<!-- 动态热点 -->
+		<hotspot name="jjzzzx_Platform_btn" ath="-224.5" atv="6.9" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.4" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('JjzzzxVideoPlatform'));"/>
+	</scene>
+
+	<!-- 测试验证中心外 cs1 -->
+	<scene name="scene_csyzzx" title="csyzzx1" onstart="" lat="" lng="" heading="">
+		
+		<control bouncinglimits="calc:image.cube ? true : false" />
+
+		<view hlookat="121.50" vlookat="11.0" vlookatmax="66" vlookatmin="-90" fovtype="MFOV" fov="125" maxpixelzoom="2.0" fovmin="70" fovmax="140" limitview="range" />
+
+		<preview url="panos/csyzzx1.tiles/preview.jpg" />
+
+		<image>
+			<cube url="panos/csyzzx1.tiles/pano_%s.jpg" />
+		</image>
+		<!-- 测试验证中心外 cs1 顶部标题 -->
+		<layer name="item4" url="../images/csyzzx1/top.png"  width="1920" height="110" align="left" x="263" y="-500" scale="0.75" handcursor="false"/>
+		<!-- 测试验证中心外 cs1 btn1 -->
+		<hotspot name="csyzzx_p" ath="129.5" atv="-5.4" rx="-4" ry="-8.5" rz="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.85" url="../images/csyzzx1/p.png" width="1548" height="515" edge="center" visible="true" enabled="true" onclick="js(nowSence('CsyzzxCover'));" onhover.addevent="tween(scale,calc(0.88));" onout.addevent="tween(scale,0.85);"/>
+		<!-- 动态热点 -->
+		<hotspot name="csyzzx_p_btn" ath="118.5" atv="0" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.7" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('CsyzzxCover'));"/>
+		<!-- 测试验证中心外 btn -->
+		<!-- <hotspot name="csyzzx_btn" ath="148.5" atv="18.9" rx="0" ry="25" rz="9.5" style="skin_hotspotstyle" linkedscene="videopano" scale="0.6" url="../images/csyzzx1/btn.png" width="350" height="99" edge="center" visible="true" enabled="true" /> -->
+		<!-- 跳转场景热点 -->
+		<hotspot name="scene_csyzzx1" ath="115.5" atv="23.5" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="1" url="./hotspotImages/rectArrow.png" width="92" height="70" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(92,81,40)" onhover.addevent="tween(scale,calc(1.1));" onout.addevent="tween(scale,1);" onclick="jump('scene_csyzzx1');js(nowSence('csxyzx1'));"/>
+		<hotspot name="biaoti" type="text" ath="115.5" atv="18.5" scale="0.9" rx="0" ry="0"  html="[b]Equipment Room[/b]" css="font-family:Arial; font-size:20px; color:#ffffff;" wordwrap="true" bg="false" bgalpha="0.5" oversampling="1.0" height="30" edge="center" distorted="true" vcenter="true" renderer="webgl" bgroundedge="10" handcursor="false"/>
+	</scene>
+
+	<!-- 测试验证中心内 cs2 -->
+	<scene name="scene_csyzzx1" title="csyzzx2" onstart="" lat="" lng="" heading="">
+		
+		<control bouncinglimits="calc:image.cube ? true : false" />
+
+		<view hlookat="156.0" vlookat="20.0" hlookatmin="0" hlookatmax="260" vlookatmax="66" vlookatmin="-90" fovtype="MFOV" fov="135" maxpixelzoom="2.0" fovmin="70" fovmax="140" limitview="range" />
+
+		<preview url="panos/csyzzx2.tiles/preview.jpg" />
+
+		<image>
+			<cube url="panos/csyzzx2.tiles/pano_%s.jpg" />
+		</image>
+		<!-- 测试验证中心内 cs2 顶部标题 -->
+		<layer name="item5" url="../images/csyzzx1/top.png"  width="1920" height="110" align="left" x="263" y="-500" scale="0.75" handcursor="false"/>
+		<!-- 测试验证中心内 btn -->
+		<hotspot name="csyzzx1_btn" ath="157.5" atv="-19.9" rx="0" ry="-20" rz="6" style="skin_hotspotstyle" linkedscene="videopano" scale="0.9" url="../images/csyzzx1/btn.png" width="337" height="120" edge="center" visible="true" enabled="true" onclick="js(nowSence('Csyzzx1Cover'));" onhover.addevent="tween(scale,calc(0.95));" onout.addevent="tween(scale,0.9);"/>
+		<!-- 动态热点 -->
+		<hotspot name="csyzzx1_btn1" ath="137.5" atv="-22.9" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.6" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('Csyzzx1Cover'));"/>
+		
+		<!-- 动态热点 -->
+		<hotspot name="scene_csyzzx" ath="215.5" atv="30.5" rx="0" ry="0" rz="" style="skin_hotspotstyle" linkedscene="videopano" scale="0.6" url="./hotspotImages/rectArrow.png" width="92" height="70" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(92,81,40)" onhover.addevent="tween(scale,calc(0.65));" onout.addevent="tween(scale,0.6);" onclick="jump('scene_csyzzx');js(nowSence('csxyzx'));"/>
+		<hotspot name="biaoti" type="text" ath="215.5" atv="24.5" scale="0.5" rx="0" ry="0"  html="[b]Test and[/b]" css="font-family:Arial; font-size:25px; color:#ffffff;" wordwrap="true" bg="false" bgalpha="0.5" oversampling="1.0" height="30" edge="center" distorted="true" vcenter="true" renderer="webgl" bgroundedge="10" handcursor="false"/>
+		<hotspot name="biaoti1" type="text" ath="216.8" atv="26.5" scale="0.5" rx="0" ry="0"  html="[b]Verification Center[/b]" css="font-family:Arial; font-size:25px; color:#ffffff;" wordwrap="true" bg="false" bgalpha="0.5" oversampling="1.0" height="30" edge="center" distorted="true" vcenter="true" renderer="webgl" bgroundedge="10" handcursor="false"/>
+		<!-- 墙上的文字 -->
+		<hotspot name="scene_csyzzx1_jg1" ath="32.5" atv="2.5" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.35" url="../images/csyzzx1/1.png" width="301" height="33" edge="center" visible="true" enabled="true" handcursor="false"/>
+		<hotspot name="scene_csyzzx1_jg2" ath="46.5" atv="2.5" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.7" url="../images/csyzzx1/2.png" width="196" height="33" edge="center" visible="true" enabled="true" handcursor="false"/>
+		<hotspot name="scene_csyzzx1_jg3" ath="67.5" atv="2.5" rx="0" ry="40" style="skin_hotspotstyle" linkedscene="videopano" scale="1.2" url="../images/csyzzx1/3.png" width="196" height="33" edge="center" visible="true" enabled="true" handcursor="false"/>
+		<hotspot name="scene_csyzzx1_jg4" ath="158.5" atv="2.5" rx="0" ry="-20" style="skin_hotspotstyle" linkedscene="videopano" scale="1" url="../images/csyzzx1/4.png" width="267" height="33" edge="center" visible="true" enabled="true" handcursor="false"/>
+		<hotspot name="scene_csyzzx1_jg5" ath="207.5" atv="2.5" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.6" url="../images/csyzzx1/5.png" width="168" height="33" edge="center" visible="true" enabled="true" handcursor="false"/>
+	</scene>
+
+	<!-- 客户交流中心 -->
+	<scene name="scene_khjlzx" title="khjlzx" onstart="" lat="" lng="" heading="">
+		
+		<control bouncinglimits="calc:image.cube ? true : false" />
+
+		<view hlookat="160.0" vlookat="0.0" hlookatmin="60" hlookatmax="260" vlookatmax="66" vlookatmin="-90" fovtype="MFOV" fov="85" maxpixelzoom="2.0" fovmin="70" fovmax="140" limitview="range" />
+		<!-- <view hlookat="-26.0" vlookat="0.0" vlookatmax="66" vlookatmin="-90" fovtype="MFOV" fov="120" maxpixelzoom="2.0" fovmin="70" fovmax="140" limitview="range" /> -->
+
+		<preview url="panos/khjlzx.tiles/preview.jpg" />
+
+		<image>
+			<cube url="panos/khjlzx.tiles/pano_%s.jpg" />
+		</image>
+		<!-- 客户交流中心 顶部标题 -->
+		<layer name="item6" url="../images/khjlzx/top.png"  width="1920" height="110" align="left" x="263" y="-500" scale="0.79" handcursor="false"/>
+		<!-- 客户交流中心 btn1 -->
+		<!-- <hotspot name="khjlzx_btn1" ath="126" atv="-3.7" rx="1" ry="-55" rz="3" style="skin_hotspotstyle" linkedscene="videopano" scale="0.35" url="../images/khjlzx/btn1.png" width="672" height="430" edge="center" visible="true" enabled="true" onclick="js(nowSence('KhjlzxVideoBusiness'));"/> -->
+		<hotspot name="khjlzx_btn1" ath="150" atv="-3.0" rx="1" ry="5" rz="1" style="skin_hotspotstyle" linkedscene="videopano" scale="0.29" url="../images/khjlzx/btn1.png" width="672" height="430" edge="center" visible="true" enabled="true" onclick="js(nowSence('KhjlzxVideoBusiness'));" onhover.addevent="tween(scale,calc(0.31));" onout.addevent="tween(scale,0.29);"/>
+		<!-- 客户交流中心 btn2 -->
+		<hotspot name="khjlzx_btn2" ath="185.5" atv="-0.9" rx="0" ry="55" rz="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.45" url="../images/khjlzx/btn2.png" width="699" height="442" edge="center" visible="true" enabled="true" onclick="js(nowSence('KhjlzxVideoKea'));" onhover.addevent="tween(scale,calc(0.47));" onout.addevent="tween(scale,0.45);"/>
+		<!-- 动态热点 -->
+		<hotspot name="khjlzx_btn1_btn" ath="150" atv="-3.0" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.3" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('KhjlzxVideoBusiness'));"/>
+		<hotspot name="khjlzx_btn2_btn" ath="185.5" atv="-0.9" rx="0" ry="0" style="skin_hotspotstyle" linkedscene="videopano" scale="0.3" url="./hotspotImages/hotbt.png"  width="77" height="77" edge="center" visible="true" enabled="true" onloaded="do_crop_animation(77,77,60)" onclick="js(nowSence('KhjlzxVideoKea'));"/>
+	</scene>
+
+
+</krpano>
